@@ -1,0 +1,50 @@
+Bootstrap: docker
+From: pytorch/pytorch:1.12.0-cuda11.3-cudnn8-devel
+
+%labels
+	MANTAINER Gihan Panapitiya
+
+%setup
+	cp ./src/Singularity_gpu_fix.sh $SINGULARITY_ROOTFS
+%post
+	apt-get update -y
+	apt-get install wget -y
+	apt-get install build-essential -y
+	apt-get install git -y
+	apt-get install vim -y
+    apt-get install subversion -y
+
+	chmod +x Singularity_gpu_fix.sh
+        ./Singularity_gpu_fix.sh
+
+	python3 -m pip install torch_geometric
+	
+	# these three need to be compiled and linked to the cuda libs.
+	# at the moment, what works for me is to build these in a
+	# singularity shell in a sandbox with the --nv flag to singularity set.
+
+	python3 -m pip install torch_sparse
+	python3 -m pip install torch_scatter
+	python3 -m pip install torch-cluster
+	python3 -m pip install pubchempy
+	python3 -m pip install pyg h5py==3.1 rdkit networkx pyarrow==10.0 
+	
+	# pip3 install --index-url pypi.anaconda.org/ cudatoolkit==10.2
+	
+	# python3 -m pip install torch-spline-conv
+	python3 -m pip install git+https://github.com/ECP-CANDLE/candle_lib@develop
+
+	cd /usr/local/
+	git clone https://github.com/gihanpanapitiya/GraphDRP.git
+	cd GraphDRP
+	git checkout to_candle
+	
+	cp train.sh /usr/local/bin
+	# cp preprocess.sh /usr/local/bin
+	# Add interface scripts train.sh, preprocess.sh and infer.sh to search path
+	cp *.sh /usr/local/bin
+	chmod a+x /usr/local/bin/*.sh
+
+	mkdir /candle_data_dir
+
+	# python ./graphdrp_baseline_pytorch.py --config_file ./graphdrp_default_model.txt
