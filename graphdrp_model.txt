@@ -1,0 +1,14 @@
+[Global_Params]
+model_name='GraphDRP'
+output_dir="Output"
+model=0
+train_batch = 1024
+val_batch = 1024
+test_batch = 1024
+lr = 1e-4
+num_epoch = 1
+log_interval = 20
+cuda_name = "cuda:0"
+data_url='https://github.com/gihanpanapitiya/GraphDRP/trunk/data'
+data_split_seed=26
+download_data=True

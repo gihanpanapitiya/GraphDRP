@@ -17,6 +17,7 @@ import pickle
 import sys
 import matplotlib.pyplot as plt
 import argparse
+from sklearn.model_selection import train_test_split
 
 def is_not_float(string_list):
     try:
@@ -225,8 +226,10 @@ def save_cell_mut_matrix():
 """
 This part is used to extract the drug - cell interaction strength. it contains IC50, AUC, Max conc, RMSE, Z_score
 """
-def save_mix_drug_cell_matrix():
-    f = open(folder + "PANCANCER_IC.csv")
+def save_mix_drug_cell_matrix(data_path, random_seed):
+    folder=data_path
+
+    f = open(folder + "/PANCANCER_IC.csv")
     reader = csv.reader(f)
     next(reader)
 
@@ -259,7 +262,7 @@ def save_mix_drug_cell_matrix():
             lst_drug.append(drug)
             lst_cell.append(cell)
         
-    with open('drug_dict', 'wb') as fp:
+    with open(data_path+'/drug_dict', 'wb') as fp:
         pickle.dump(drug_dict, fp)
 
     xd, xc, y = np.asarray(xd), np.asarray(xc), np.asarray(y)
@@ -267,30 +270,49 @@ def save_mix_drug_cell_matrix():
     size = int(xd.shape[0] * 0.8)
     size1 = int(xd.shape[0] * 0.9)
 
-    with open('list_drug_mix_test', 'wb') as fp:
-        pickle.dump(lst_drug[size1:], fp)
+    all_ids = np.arange(xd.shape[0])
+    print('random_seed: ', random_seed)
+    train_ids, test_ids = train_test_split(all_ids, test_size=.2, random_state=random_seed)
+    val_ids, test_ids = train_test_split(test_ids, test_size=.5, random_state=random_seed)
+    
+
+    with open(data_path+'/list_drug_mix_test', 'wb') as fp:
+        # pickle.dump(lst_drug[size1:], fp)
+        pickle.dump([lst_drug[i] for i in test_ids], fp)
         
-    with open('list_cell_mix_test', 'wb') as fp:
-        pickle.dump(lst_cell[size1:], fp)
+    with open(data_path+'/list_cell_mix_test', 'wb') as fp:
+        # pickle.dump(lst_cell[size1:], fp)
+        pickle.dump([lst_cell[i] for i in test_ids], fp)
 
-    xd_train = xd[:size]
-    xd_val = xd[size:size1]
-    xd_test = xd[size1:]
+    # xd_train = xd[:size]
+    xd_train = xd[train_ids]
+    # xd_val = xd[size:size1]
+    xd_val = xd[val_ids]
+    # xd_test = xd[size1:]
+    xd_test = xd[test_ids]
 
-    xc_train = xc[:size]
-    xc_val = xc[size:size1]
-    xc_test = xc[size1:]
+    pd.DataFrame(xd_test, columns=['smiles']).to_csv(data_path+'/test_smiles.csv', index=False)
 
-    y_train = y[:size]
-    y_val = y[size:size1]
-    y_test = y[size1:]
+    # xc_train = xc[:size]
+    xc_train = xc[train_ids]
+    # xc_val = xc[size:size1]
+    xc_val = xc[val_ids]
+    # xc_test = xc[size1:]
+    xc_test = xc[test_ids]
+
+    # y_train = y[:size]
+    y_train = y[train_ids]
+    # y_val = y[size:size1]
+    y_val = y[val_ids]
+    # y_test = y[size1:]
+    y_test = y[test_ids]
 
     dataset = 'GDSC'
     print('preparing ', dataset + '_train.pt in pytorch format!')
 
-    train_data = TestbedDataset(root='data', dataset=dataset+'_train_mix', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
-    val_data = TestbedDataset(root='data', dataset=dataset+'_val_mix', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
-    test_data = TestbedDataset(root='data', dataset=dataset+'_test_mix', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
+    train_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_train_mix', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph)
+    val_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_val_mix', xd=xd_val, xt=xc_val, y=y_val, smile_graph=smile_graph)
+    test_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_test_mix', xd=xd_test, xt=xc_test, y=y_test, smile_graph=smile_graph)
 
 
 def save_blind_drug_matrix():
@@ -529,22 +551,22 @@ def save_best_individual_drug_cell_matrix():
     print('preparing ', dataset + '_train.pt in pytorch format!')
     train_data = TestbedDataset(root='data', dataset=dataset+'_bortezomib', xd=xd_train, xt=xc_train, y=y_train, smile_graph=smile_graph, saliency_map=True)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='prepare dataset to train model')
-    parser.add_argument('--choice', type=int, required=False, default=0, help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
-    args = parser.parse_args()
-    choice = args.choice
-    if choice == 0:
-        # save mix test dataset
-        save_mix_drug_cell_matrix()
-    elif choice == 1:
-        # save saliency map dataset
-        save_best_individual_drug_cell_matrix()
-    elif choice == 2:
-        # save blind drug dataset
-        save_blind_drug_matrix()
-    elif choice == 3:
-        # save blind cell dataset
-        save_blind_cell_matrix()
-    else:
-        print("Invalide option, choose 0 -> 4")
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser(description='prepare dataset to train model')
+#     parser.add_argument('--choice', type=int, required=False, default=0, help='0.mix test, 1.saliency value, 2.drug blind, 3.cell blind')
+#     args = parser.parse_args()
+#     choice = args.choice
+#     if choice == 0:
+#         # save mix test dataset
+#         save_mix_drug_cell_matrix()
+#     elif choice == 1:
+#         # save saliency map dataset
+#         save_best_individual_drug_cell_matrix()
+#     elif choice == 2:
+#         # save blind drug dataset
+#         save_blind_drug_matrix()
+#     elif choice == 3:
+#         # save blind cell dataset
+#         save_blind_cell_matrix()
+#     else:
+#         print("Invalide option, choose 0 -> 4")
