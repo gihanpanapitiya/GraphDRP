@@ -184,8 +184,8 @@ def load_drug_smile():
     
     return drug_dict, drug_smile, smile_graph
 
-def save_cell_mut_matrix():
-    f = open(folder + "PANCANCER_Genetic_feature.csv")
+def save_cell_mut_matrix(folder):
+    f = open(folder + "/PANCANCER_Genetic_feature.csv")
     reader = csv.reader(f)
     next(reader)
     features = {}
@@ -233,7 +233,7 @@ def save_mix_drug_cell_matrix(data_path, random_seed):
     reader = csv.reader(f)
     next(reader)
 
-    cell_dict, cell_feature = save_cell_mut_matrix()
+    cell_dict, cell_feature = save_cell_mut_matrix(folder)
     drug_dict, drug_smile, smile_graph = load_drug_smile()
 
     temp_data = []
