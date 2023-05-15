@@ -159,8 +159,8 @@ def smile_to_graph(smile):
         
     return c_size, features, edge_index
 
-def load_drug_smile():
-    reader = csv.reader(open(folder + "drug_smiles.csv"))
+def load_drug_smile(folder):
+    reader = csv.reader(open(folder + "/drug_smiles.csv"))
     next(reader, None)
 
     drug_dict = {}
@@ -217,7 +217,7 @@ def save_cell_mut_matrix(folder):
     for item in matrix_list:
         cell_feature[item[0], item[1]] = 1
 
-    with open('mut_dict', 'wb') as fp:
+    with open(folder+'/mut_dict', 'wb') as fp:
         pickle.dump(mut_dict, fp)
     
     return cell_dict, cell_feature
@@ -234,7 +234,7 @@ def save_mix_drug_cell_matrix(data_path, random_seed):
     next(reader)
 
     cell_dict, cell_feature = save_cell_mut_matrix(folder)
-    drug_dict, drug_smile, smile_graph = load_drug_smile()
+    drug_dict, drug_smile, smile_graph = load_drug_smile(folder)
 
     temp_data = []
     bExist = np.zeros((len(drug_dict), len(cell_dict)))
