@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import argparse
 from sklearn.model_selection import train_test_split
 import improve_utils
+import urllib
 
 
 def is_not_float(string_list):
@@ -606,7 +607,7 @@ def load_drug_smile_candle(split=0):
         
     return drug_dict, drug_smile, smile_graph, drug_smile_dict, smiles_df
 
-def get_cell_dict_feature_candle(model_data, gene_list=None):
+def get_cell_dict_feature_candle(model_data, gene_list=None, data_path=None):
 
     mutation_data = improve_utils.load_cell_mutation_data(gene_system_identifier="Entrez")
     # expr_data = improve_utils.load_gene_expression_data(gene_system_identifier="Gene_Symbol")
@@ -617,7 +618,8 @@ def get_cell_dict_feature_candle(model_data, gene_list=None):
         gene_list = list(set(gene_list))
         common_genes = list(set(gene_data).intersection(gene_list))
     else:
-        lmgenes = pd.read_csv('landmark_genes', header=None).values.ravel().tolist()
+        urllib.request.urlretrieve('https://raw.githubusercontent.com/gihanpanapitiya/GraphDRP/to_candle/landmark_genes', data_path+'/landmark_genes')
+        lmgenes = pd.read_csv(data_path+'/landmark_genes', header=None).values.ravel().tolist()
         common_genes = list(set(lmgenes).intersection(gene_data))
 
 
@@ -686,7 +688,7 @@ def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='i
 
     drug_dict, drug_smile, smile_graph, drug_smile_dict, smiles_df = load_drug_smile_candle()
 
-    cell_dict, cell_feature = get_cell_dict_feature_candle(all_df)
+    cell_dict, cell_feature = get_cell_dict_feature_candle(all_df, data_path=data_path)
 
     all_df=pd.merge(all_df, smiles_df[['improve_chem_id', 'smiles']], on='smiles', how='left')
 
