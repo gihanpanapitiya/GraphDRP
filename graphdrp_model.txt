@@ -12,3 +12,5 @@ cuda_name = "cuda:0"
 data_url='https://github.com/gihanpanapitiya/GraphDRP/trunk/data'
 data_split_seed=26
 download_data=True
+data_type='ccle_candle'
+#data_type='original'

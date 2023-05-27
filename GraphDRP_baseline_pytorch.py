@@ -12,8 +12,11 @@ from utils import *
 import datetime
 import argparse
 from preprocess import save_mix_drug_cell_matrix
+from preprocess import save_mix_drug_cell_matrix_candle
 import candle
-
+import improve_utils
+import urllib
+from sklearn.metrics import mean_squared_error
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 additional_definitions = [
@@ -60,7 +63,11 @@ additional_definitions = [
     {'name': 'data_split_seed',
      'type': int,
      'help': '.....'
-     }
+     },
+     {'name': 'data_type',
+     'type': str,
+     'help': '.....'
+     } 
 ]
 
 required = None
@@ -113,14 +120,15 @@ def predicting(model, device, loader):
 
 
 
-def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval, cuda_name, data_path, output_path):
+def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval, 
+           cuda_name, data_path, output_path, dataset_type):
 
     
     print('Learning rate: ', lr)
     print('Epochs: ', num_epoch)
 
     model_st = modeling.__name__
-    dataset = 'GDSC'
+    dataset = dataset_type
     train_losses = []
     val_losses = []
     val_pearsons = []
@@ -181,7 +189,11 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
         # load the best model
         model.load_state_dict(torch.load(model_file_name))
         true_test, pred_test = predicting(model, device, test_loader)
-        test_smiles = pd.read_csv(data_path+'/test_smiles.csv')['smiles'].values
+        # print(true_test, end='')
+        # print(true_test, end='')
+        print("rmse: ", mean_squared_error(true_test, pred_test)**.5)
+
+        test_smiles = pd.read_csv(data_path+'/test_smiles2.csv')['smiles'].values
         df_res = pd.DataFrame(np.column_stack([true_test,pred_test, test_smiles]), columns=['true', 'pred', 'smiles'])
         df_res.to_csv(output_path+'/test_predictions.csv', index=False)
 
@@ -210,12 +222,6 @@ def run(opt):
     # args = parser.parse_args()
     # base_path=os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data')
 
-    data_url = opt['data_url']
-    download_data = opt['download_data']
-    data_path=os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data')
-    get_data(data_url, data_path, download_data)
-
-
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][opt['model']]
     train_batch = opt['train_batch']
     val_batch = opt['val_batch']
@@ -224,13 +230,25 @@ def run(opt):
     num_epoch = opt['num_epoch']
     log_interval = opt['log_interval']
     cuda_name = opt['cuda_name']
-    output_path=opt['output_dir']
+    output_path = opt['output_dir']
+
+    data_path=os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data')
+    if opt['data_type'] == 'original':
+        data_url = opt['data_url']
+        download_data = opt['download_data']
+        get_data(data_url, data_path, download_data)
+        save_mix_drug_cell_matrix(data_path, opt['data_split_seed'])
+    elif opt['data_type'] == 'ccle_candle':
+        print('running with candle data....')
+        dataset_type='CCLE'
+        if not os.path.exists(data_path+'/csa_data'):
+            download_csa_data(opt)
+        save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', metric='ic50', data_split_seed=opt['data_split_seed'])
 
 
 
-    save_mix_drug_cell_matrix(data_path, opt['data_split_seed'])
-
-    main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval, cuda_name, data_path, output_path)
+    main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
+     cuda_name, data_path, output_path, dataset_type)
 
 
 
@@ -256,6 +274,35 @@ def initialize_parameters():
                                 )
     gParameters = candle.finalize_parameters(graphdrp_params)
     return gParameters
+
+
+def download_csa_data(opt):
+
+    csa_data_folder = os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data', 'csa_data', 'raw_data')
+    splits_dir = os.path.join(csa_data_folder, 'splits') 
+    x_data_dir = os.path.join(csa_data_folder, 'x_data')
+    y_data_dir = os.path.join(csa_data_folder, 'y_data')
+
+    if not os.path.exists(csa_data_folder):
+        print('creating folder: %s'%csa_data_folder)
+        os.makedirs(csa_data_folder)
+        os.mkdir( splits_dir  )
+        os.mkdir( x_data_dir  )
+        os.mkdir( y_data_dir  )
+    
+
+    for file in ['CCLE_all.txt', 'CCLE_split_0_test.txt', 'CCLE_split_0_train.txt', 'CCLE_split_0_val.txt']:
+        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/csa_data/splits/{file}',
+        splits_dir+f'/{file}')
+
+    for file in ['cancer_mutation_count.txt', 'drug_SMILES.txt','drug_ecfp4_512bit.txt' ]:
+        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/csa_data/x_data/{file}',
+        x_data_dir+f'/{file}')
+
+    for file in ['response.txt']:
+        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/csa_data/y_data/{file}',
+        y_data_dir+f'/{file}')
+
 
 if __name__ == '__main__':
 
