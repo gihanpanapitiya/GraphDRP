@@ -674,6 +674,8 @@ def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='i
     train_df = get_drug_response_data(rs_train, metric)
     val_df = get_drug_response_data(rs_val, metric)
     test_df = get_drug_response_data(rs_test, metric)
+
+
     all_df = pd.concat([train_df, val_df, test_df], axis=0)
     all_df = all_df.sort_values(by='improve_sample_id')
     all_df.reset_index(drop=True, inplace=True)
@@ -684,7 +686,7 @@ def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='i
         train_df.reset_index(drop=True, inplace=True)
         test_df.reset_index(drop=True, inplace=True)
         val_df.reset_index(drop=True, inplace=True)
-        test_df.to_csv(os.path.join(data_path, 'test_smiles2.csv'), index=False)
+    test_df.to_csv(os.path.join(data_path, 'test_smiles2.csv'), index=False)
 
     drug_dict, drug_smile, smile_graph, drug_smile_dict, smiles_df = load_drug_smile_candle()
 

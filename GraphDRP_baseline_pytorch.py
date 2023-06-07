@@ -193,8 +193,11 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
         # print(true_test, end='')
         print("rmse: ", mean_squared_error(true_test, pred_test)**.5)
 
-        test_smiles = pd.read_csv(data_path+'/test_smiles2.csv')['smiles'].values
+        test_data = pd.read_csv(os.path.join(data_path, 'test_smiles2.csv'))
+        test_smiles = test_data['smiles'].values
         df_res = pd.DataFrame(np.column_stack([true_test,pred_test, test_smiles]), columns=['true', 'pred', 'smiles'])
+        test_data.columns=['cell_line_id',	'drug_id','labels']
+        df_res = pd.concat([df_res, test_data], axis=1)
         df_res.to_csv(output_path+'/test_predictions.csv', index=False)
 
 def get_data(data_url, cache_subdir, download=True):
