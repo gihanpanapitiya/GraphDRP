@@ -40,7 +40,7 @@ additional_definitions = [
      'type': float,
      'help': '....'
      },
-    {'name': 'num_epoch',
+    {'name': 'epochs',
      'type': int,
      'help': '..'
      },
@@ -230,7 +230,7 @@ def run(opt):
     val_batch = opt['val_batch']
     test_batch = opt['test_batch']
     lr = opt['lr']
-    num_epoch = opt['num_epoch']
+    num_epoch = opt['epochs']
     log_interval = opt['log_interval']
     cuda_name = opt['cuda_name']
     output_path = opt['output_dir']
