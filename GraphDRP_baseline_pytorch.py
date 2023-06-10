@@ -17,6 +17,8 @@ import candle
 import improve_utils
 import urllib
 from sklearn.metrics import mean_squared_error
+from download_graphdrp_data import download_csa_data
+
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 additional_definitions = [
@@ -244,9 +246,13 @@ def run(opt):
     elif opt['data_type'] == 'ccle_candle':
         print('running with candle data....')
         dataset_type='CCLE'
-        if not os.path.exists(data_path+'/csa_data'):
+        if not os.path.exists(data_path+'/csa_data') and opt['download_data']:
+            print('downloading ccle data')
             download_csa_data(opt)
+        else:
+            print('not downloading ccle data')
         save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', metric='ic50', data_split_seed=opt['data_split_seed'])
+
 
 
 
@@ -279,32 +285,6 @@ def initialize_parameters():
     return gParameters
 
 
-def download_csa_data(opt):
-
-    csa_data_folder = os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data', 'csa_data', 'raw_data')
-    splits_dir = os.path.join(csa_data_folder, 'splits') 
-    x_data_dir = os.path.join(csa_data_folder, 'x_data')
-    y_data_dir = os.path.join(csa_data_folder, 'y_data')
-
-    if not os.path.exists(csa_data_folder):
-        print('creating folder: %s'%csa_data_folder)
-        os.makedirs(csa_data_folder)
-        os.mkdir( splits_dir  )
-        os.mkdir( x_data_dir  )
-        os.mkdir( y_data_dir  )
-    
-
-    for file in ['CCLE_all.txt', 'CCLE_split_0_test.txt', 'CCLE_split_0_train.txt', 'CCLE_split_0_val.txt']:
-        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/csa_data/splits/{file}',
-        splits_dir+f'/{file}')
-
-    for file in ['cancer_mutation_count.txt', 'drug_SMILES.txt','drug_ecfp4_512bit.txt' ]:
-        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/csa_data/x_data/{file}',
-        x_data_dir+f'/{file}')
-
-    for file in ['response.txt']:
-        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/csa_data/y_data/{file}',
-        y_data_dir+f'/{file}')
 
 
 if __name__ == '__main__':
