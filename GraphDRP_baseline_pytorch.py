@@ -58,10 +58,6 @@ additional_definitions = [
      'type': str,
      'help': '...'
      },
-    {'name': 'download_data',
-     'type': bool,
-     'help': '...'
-     },
     {'name': 'data_split_seed',
      'type': int,
      'help': '.....'
@@ -69,7 +65,10 @@ additional_definitions = [
      {'name': 'data_type',
      'type': str,
      'help': '.....'
-     } 
+     },
+    {'name': 'download_data',
+     'type': bool
+     }
 ]
 
 required = None
