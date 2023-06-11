@@ -122,7 +122,7 @@ def predicting(model, device, loader):
 
 
 def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval, 
-           cuda_name, data_path, output_path, dataset_type):
+           cuda_name, data_path, output_path, dataset_type, train_data, val_data, test_data):
 
     
     print('Learning rate: ', lr)
@@ -134,72 +134,77 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     val_losses = []
     val_pearsons = []
     print('\nrunning on ', model_st + '_' + dataset )
-    processed_data_file_train = data_path+'/data/processed/' + dataset + '_train_mix'+'.pt'
-    processed_data_file_val = data_path+'/data/processed/' + dataset + '_val_mix'+'.pt'
-    processed_data_file_test = data_path+'/data/processed/' + dataset + '_test_mix'+'.pt'
-    if ((not os.path.isfile(processed_data_file_train)) or (not os.path.isfile(processed_data_file_val)) or (not os.path.isfile(processed_data_file_test))):
-        print('please run create_data.py to prepare data in pytorch format!')
-    else:
-        train_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_train_mix')
-        val_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_val_mix')
-        test_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_test_mix')
+
+    # turning off the reading from preprocessed locations -gihan
+    # processed_data_file_train = data_path+'/data/processed/' + dataset + '_train_mix'+'.pt'
+    # processed_data_file_val = data_path+'/data/processed/' + dataset + '_val_mix'+'.pt'
+    # processed_data_file_test = data_path+'/data/processed/' + dataset + '_test_mix'+'.pt'
+
+    # if ((not os.path.isfile(processed_data_file_train)) or (not os.path.isfile(processed_data_file_val)) or (not os.path.isfile(processed_data_file_test))):
+    #     print('please run create_data.py to prepare data in pytorch format!')
+    # else:
+    #     train_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_train_mix')
+    #     val_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_val_mix')
+    #     test_data = TestbedDataset(root=data_path+'/data', dataset=dataset+'_test_mix')
+    
+    # turning off the reading from preprocessed locations -gihan
 
         # make data PyTorch mini-batch processing ready
-        train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
-        val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)
-        test_loader = DataLoader(test_data, batch_size=test_batch, shuffle=False, drop_last=False)
-        print("CPU/GPU: ", torch.cuda.is_available())
-                
-        # training the model
-        device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
-        print(device)
-        model = modeling().to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-        best_mse = 1000
-        best_pearson = 1
-        best_epoch = -1
-        model_file_name = output_path+'/model_' + model_st + '_' + dataset +  '.model'
-        result_file_name = output_path+'/result_' + model_st + '_' + dataset +  '.csv'
-        loss_fig_name = output_path+'/model_' + model_st + '_' + dataset + '_loss'
-        pearson_fig_name = output_path+'/model_' + model_st + '_' + dataset + '_pearson'
-        for epoch in range(num_epoch):
-            train_loss = train(model, device, train_loader, optimizer, epoch+1, log_interval)
-            G,P = predicting(model, device, val_loader)
-            ret = [rmse(G,P),mse(G,P),pearson(G,P),spearman(G,P)]
-                        
-            G_test,P_test = predicting(model, device, val_loader)
-            ret_test = [rmse(G_test,P_test),mse(G_test,P_test),pearson(G_test,P_test),spearman(G_test,P_test)]
+    train_loader = DataLoader(train_data, batch_size=train_batch, shuffle=True)
+    val_loader = DataLoader(val_data, batch_size=val_batch, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=test_batch, shuffle=False, drop_last=False)
+    print("CPU/GPU: ", torch.cuda.is_available())
+            
+    # training the model
+    device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+    print(device)
+    model = modeling().to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    best_mse = 1000
+    best_pearson = 1
+    best_epoch = -1
+    model_file_name = output_path+'/model_' + model_st + '_' + dataset +  '.model'
+    result_file_name = output_path+'/result_' + model_st + '_' + dataset +  '.csv'
+    loss_fig_name = output_path+'/model_' + model_st + '_' + dataset + '_loss'
+    pearson_fig_name = output_path+'/model_' + model_st + '_' + dataset + '_pearson'
+    for epoch in range(num_epoch):
+        train_loss = train(model, device, train_loader, optimizer, epoch+1, log_interval)
+        G,P = predicting(model, device, val_loader)
+        ret = [rmse(G,P),mse(G,P),pearson(G,P),spearman(G,P)]
+                    
+        G_test,P_test = predicting(model, device, val_loader)
+        ret_test = [rmse(G_test,P_test),mse(G_test,P_test),pearson(G_test,P_test),spearman(G_test,P_test)]
 
-            train_losses.append(train_loss)
-            val_losses.append(ret[1])
-            val_pearsons.append(ret[2])
+        train_losses.append(train_loss)
+        val_losses.append(ret[1])
+        val_pearsons.append(ret[2])
 
-            if ret[1]<best_mse:
-                torch.save(model.state_dict(), model_file_name)
-                with open(result_file_name,'w') as f:
-                    f.write(','.join(map(str,ret_test)))
-                best_epoch = epoch+1
-                best_mse = ret[1]
-                best_pearson = ret[2]
-                print(' rmse improved at epoch ', best_epoch, '; best_mse:', best_mse,model_st,dataset)
-            else:
-                print(' no improvement since epoch ', best_epoch, '; best_mse, best pearson:', best_mse, best_pearson, model_st, dataset)
-        draw_loss(train_losses, val_losses, loss_fig_name)
-        draw_pearson(val_pearsons, pearson_fig_name)
+        if ret[1]<best_mse:
+            torch.save(model.state_dict(), model_file_name)
+            with open(result_file_name,'w') as f:
+                f.write(','.join(map(str,ret_test)))
+            best_epoch = epoch+1
+            best_mse = ret[1]
+            best_pearson = ret[2]
+            print(' rmse improved at epoch ', best_epoch, '; best_mse:', best_mse,model_st,dataset)
+        else:
+            print(' no improvement since epoch ', best_epoch, '; best_mse, best pearson:', best_mse, best_pearson, model_st, dataset)
+    draw_loss(train_losses, val_losses, loss_fig_name)
+    draw_pearson(val_pearsons, pearson_fig_name)
 
-        # load the best model
-        model.load_state_dict(torch.load(model_file_name))
-        true_test, pred_test = predicting(model, device, test_loader)
-        # print(true_test, end='')
-        # print(true_test, end='')
-        print("rmse: ", mean_squared_error(true_test, pred_test)**.5)
+    # load the best model
+    model.load_state_dict(torch.load(model_file_name))
+    true_test, pred_test = predicting(model, device, test_loader)
+    # print(true_test, end='')
+    # print(true_test, end='')
+    print("rmse: ", mean_squared_error(true_test, pred_test)**.5)
 
-        test_data = pd.read_csv(os.path.join(data_path, 'test_smiles2.csv'))
-        test_smiles = test_data['smiles'].values
-        df_res = pd.DataFrame(np.column_stack([true_test,pred_test, test_smiles]), columns=['true', 'pred', 'smiles'])
-        test_data.columns=['cell_line_id',	'drug_id','labels']
-        df_res = pd.concat([df_res, test_data], axis=1)
-        df_res.to_csv(output_path+'/test_predictions.csv', index=False)
+    test_data = pd.read_csv(os.path.join(data_path, 'test_smiles2.csv'))
+    test_smiles = test_data['smiles'].values
+    df_res = pd.DataFrame(np.column_stack([true_test,pred_test, test_smiles]), columns=['true', 'pred', 'smiles'])
+    test_data.columns=['cell_line_id',	'drug_id','labels']
+    df_res = pd.concat([df_res, test_data], axis=1)
+    df_res.to_csv(output_path+'/test_predictions.csv', index=False)
 
 def get_data(data_url, cache_subdir, download=True):
     
@@ -250,13 +255,14 @@ def run(opt):
             download_csa_data(opt)
         else:
             print('not downloading ccle data')
-    save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', metric='ic50', data_split_seed=opt['data_split_seed'])
+    train_data, val_data, test_data = save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', \
+    metric='ic50', data_split_seed=opt['data_split_seed'])
 
 
 
 
     main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-     cuda_name, data_path, output_path, dataset_type)
+     cuda_name, data_path, output_path, dataset_type, train_data, val_data, test_data)
 
 
 

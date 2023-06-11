@@ -681,6 +681,7 @@ def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='i
     all_df.reset_index(drop=True, inplace=True)
 
     if data_split_seed > -1:
+        print('random splitting...')
         train_df, val_df = train_test_split(all_df, test_size=0.2, random_state=data_split_seed)
         test_df, val_df = train_test_split(val_df, test_size=0.5, random_state=data_split_seed)
         train_df.reset_index(drop=True, inplace=True)

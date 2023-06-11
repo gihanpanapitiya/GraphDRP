@@ -17,13 +17,15 @@ class TestbedDataset(InMemoryDataset):
         # benchmark dataset, default = 'davis'
         self.dataset = dataset
         self.saliency_map = saliency_map
-        if os.path.isfile(self.processed_paths[0]):
-            print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
-            self.data, self.slices = torch.load(self.processed_paths[0])
-        else:
-            print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
-            self.process(xd, xt, y,smile_graph)
-            self.data, self.slices = torch.load(self.processed_paths[0])
+        # turning off the reading from preprocessed locations -gihan
+        # if os.path.isfile(self.processed_paths[0]):
+        #     print('Pre-processed data found: {}, loading ...'.format(self.processed_paths[0]))
+        #     self.data, self.slices = torch.load(self.processed_paths[0])
+        # else:
+        # turning off the reading from preprocessed locations -gihan
+        print('Pre-processed data {} not found, doing pre-processing...'.format(self.processed_paths[0]))
+        self.process(xd, xt, y,smile_graph)
+        self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
     def raw_file_names(self):
