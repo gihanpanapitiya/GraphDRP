@@ -250,7 +250,7 @@ def run(opt):
             download_csa_data(opt)
         else:
             print('not downloading ccle data')
-        save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', metric='ic50', data_split_seed=opt['data_split_seed'])
+    save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', metric='ic50', data_split_seed=opt['data_split_seed'])
 
 
 
