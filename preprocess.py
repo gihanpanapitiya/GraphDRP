@@ -579,10 +579,10 @@ def get_drug_response_data(df, metric):
     return data_smiles_df
 
 
-def load_drug_smile_candle(split=0):
+def load_drug_smile_candle(split=0, metric='ic50'):
 
     data_type='CCLE'
-    metric='ic50'
+    # metric='ic50'
 
     rs_all = improve_utils.load_single_drug_response_data(source=data_type, split=split,
                                                           split_type=["train", "test", 'val'],
@@ -637,7 +637,7 @@ def get_cell_dict_feature_candle(model_data, gene_list=None, data_path=None):
     return cell_dict, cell_feature
 
 
-def get_input_data_candle(df, cell_feature, cell_dict):
+def get_input_data_candle(df, cell_feature, cell_dict, metric):
     
     xd, xc, y=[],[],[]
     for i in df.index:
@@ -646,7 +646,7 @@ def get_input_data_candle(df, cell_feature, cell_dict):
         cf = cell_feature[  cell_dict[cell_id] ]
         # cell_id = train_df.loc[i, 'improve_sample_id']
         smiles = df.loc[i, 'smiles']
-        ic50 = df.loc[i, 'ic50']
+        ic50 = df.loc[i, metric]
 
         xd.append(smiles)
         xc.append(cf)
@@ -689,15 +689,15 @@ def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='i
         val_df.reset_index(drop=True, inplace=True)
     test_df.to_csv(os.path.join(data_path, 'test_smiles2.csv'), index=False)
 
-    drug_dict, drug_smile, smile_graph, drug_smile_dict, smiles_df = load_drug_smile_candle()
+    drug_dict, drug_smile, smile_graph, drug_smile_dict, smiles_df = load_drug_smile_candle(metric=metric)
 
     cell_dict, cell_feature = get_cell_dict_feature_candle(all_df, data_path=data_path)
 
     all_df=pd.merge(all_df, smiles_df[['improve_chem_id', 'smiles']], on='smiles', how='left')
 
-    xd_train, xc_train, y_train = get_input_data_candle(train_df, cell_feature, cell_dict)
-    xd_val, xc_val, y_val = get_input_data_candle(val_df, cell_feature, cell_dict)
-    xd_test, xc_test, y_test = get_input_data_candle(test_df, cell_feature, cell_dict)
+    xd_train, xc_train, y_train = get_input_data_candle(train_df, cell_feature, cell_dict, metric)
+    xd_val, xc_val, y_val = get_input_data_candle(val_df, cell_feature, cell_dict, metric)
+    xd_test, xc_test, y_test = get_input_data_candle(test_df, cell_feature, cell_dict, metric)
 
   
 

@@ -68,6 +68,9 @@ additional_definitions = [
      },
     {'name': 'download_data',
      'type': bool
+     },
+    {'name': 'metric',
+     'type': str
      }
 ]
 
@@ -240,6 +243,8 @@ def run(opt):
     log_interval = opt['log_interval']
     cuda_name = opt['cuda_name']
     output_path = opt['output_dir']
+    metric = opt['metric']
+    
 
     data_path=os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data')
     if opt['data_type'] == 'original':
@@ -256,7 +261,7 @@ def run(opt):
         else:
             print('not downloading ccle data')
     train_data, val_data, test_data = save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', \
-    metric='ic50', data_split_seed=opt['data_split_seed'])
+    metric=metric, data_split_seed=opt['data_split_seed'])
 
 
 
