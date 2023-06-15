@@ -17,7 +17,7 @@ import candle
 import improve_utils
 import urllib
 from sklearn.metrics import mean_squared_error
-from download_graphdrp_data import download_csa_data
+from preprocess import download_csa_data
 
 
 file_path = os.path.dirname(os.path.realpath(__file__))
@@ -255,9 +255,10 @@ def run(opt):
     elif opt['data_type'] == 'ccle_candle':
         print('running with candle data....')
         dataset_type='CCLE'
-        if not os.path.exists(data_path+'/csa_data') and opt['download_data']:
-            print('downloading ccle data')
-            download_csa_data(opt)
+        if opt['download_data']:
+            if not os.path.exists(data_path+'/csa_data'):
+                print('downloading ccle data')
+                download_csa_data(opt)
         else:
             print('not downloading ccle data')
     train_data, val_data, test_data = save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', \

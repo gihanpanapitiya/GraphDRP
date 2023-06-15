@@ -566,6 +566,35 @@ def save_best_individual_drug_cell_matrix():
 
 # CADNDLE FUNCTIONS
 
+
+def download_csa_data(opt):
+
+    csa_data_folder = os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data', 'csa_data', 'raw_data')
+    splits_dir = os.path.join(csa_data_folder, 'splits') 
+    x_data_dir = os.path.join(csa_data_folder, 'x_data')
+    y_data_dir = os.path.join(csa_data_folder, 'y_data')
+
+    if not os.path.exists(csa_data_folder):
+        print('creating folder: %s'%csa_data_folder)
+        os.makedirs(csa_data_folder)
+        os.mkdir( splits_dir  )
+        os.mkdir( x_data_dir  )
+        os.mkdir( y_data_dir  )
+    
+
+    for file in ['CCLE_all.txt', 'CCLE_split_0_test.txt', 'CCLE_split_0_train.txt', 'CCLE_split_0_val.txt']:
+        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/benchmark-data-imp-2023/csa_data/splits/{file}',
+        splits_dir+f'/{file}')
+
+    for file in ['cancer_mutation_count.txt', 'drug_SMILES.txt','drug_ecfp4_512bit.txt' ]:
+        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/benchmark-data-imp-2023/csa_data/x_data/{file}',
+        x_data_dir+f'/{file}')
+
+    for file in ['response.txt']:
+        urllib.request.urlretrieve(f'https://ftp.mcs.anl.gov/pub/candle/public/improve/benchmarks/single_drug_drp/benchmark-data-imp-2023/csa_data/y_data/{file}',
+        y_data_dir+f'/{file}')
+
+
 def get_drug_response_data(df, metric):
     
     # df = rs_train.copy()
