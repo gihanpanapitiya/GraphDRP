@@ -2,6 +2,9 @@
 model_name='GraphDRP'
 output_dir="Output"
 model=0
+dropout=.2
+fc1_dim=1024
+fc2_dim=128
 train_batch = 256
 val_batch = 256
 test_batch = 256

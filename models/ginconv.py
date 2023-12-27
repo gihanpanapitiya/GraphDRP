@@ -8,7 +8,7 @@ from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 # GINConv model
 class GINConvNet(torch.nn.Module):
     def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
-                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2):
+                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, fc1_dim=1024, fc2_dim=128):
 
         super(GINConvNet, self).__init__()
 
@@ -16,6 +16,8 @@ class GINConvNet(torch.nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.relu = nn.ReLU()
         self.n_output = n_output
+
+
         # convolution layers
         nn1 = Sequential(Linear(num_features_xd, dim), ReLU(), Linear(dim, dim))
         self.conv1 = GINConv(nn1)
@@ -55,9 +57,9 @@ class GINConvNet(torch.nn.Module):
         
 
         # combined layers
-        self.fc1 = nn.Linear(2*output_dim, 1024)
-        self.fc2 = nn.Linear(1024, 128)
-        self.out = nn.Linear(128, n_output)
+        self.fc1 = nn.Linear(2*output_dim, fc1_dim)
+        self.fc2 = nn.Linear(fc1_dim, fc2_dim)
+        self.out = nn.Linear(fc2_dim, n_output)
 
         # activation and regularization
         self.relu = nn.ReLU()

@@ -95,7 +95,16 @@ additional_definitions = [
      },
     {'name': 'load_pt_weights',
      'type': str
-     }
+     },
+    {'name': 'dropout',
+     'type': float
+     },
+    {'name': 'fc1_dim',
+     'type': int
+    },
+    {'name': 'fc2_dim',
+     'type': int
+    }
 ]
 
 required = None
@@ -186,7 +195,7 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     # training the model
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
     print(device)
-    model = modeling().to(device)
+    model = modeling(dropout=args.dropout, fc1_dim=args.fc1_dim, fc2_dim=args.fc2_dim).to(device)
 
     # load_pt_weights=False
     if os.path.exists( args['load_pt_weights'] ):
@@ -293,7 +302,7 @@ def run(opt):
 
     # args = parser.parse_args()
     # base_path=os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data')
-
+    # opt['model'] is 0, so the model is GINConvNet
     modeling = [GINConvNet, GATNet, GAT_GCN, GCNNet][opt['model']]
     train_batch = opt['train_batch']
     val_batch = opt['val_batch']
