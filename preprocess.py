@@ -774,13 +774,16 @@ def save_mix_drug_cell_matrix_candle(args):
 
     # if args['use_proteomics_data']:
     # USE THE CELL LINES IN PROTEOMICS EITHER WHEN GENE EXPRESSION OR PROTEOMICS ARE USED
-    gexp_ = load_generic_expression_data('proteomics_restructure_with_knn_impute.tsv')
-    use_improve_ids = gexp_.index.values
+    # commenting this part. this is needed for the comparison of proteomics vs gene expression
+    # but not needed otherwise?
+    # gexp_ = load_generic_expression_data('proteomics_restructure_with_knn_impute.tsv')
+    # use_improve_ids = gexp_.index.values
 
-    train_df = train_df[train_df.improve_sample_id.isin(use_improve_ids)]
-    val_df = val_df[val_df.improve_sample_id.isin(use_improve_ids)]
-    test_df = test_df[test_df.improve_sample_id.isin(use_improve_ids)]
-    
+    # train_df = train_df[train_df.improve_sample_id.isin(use_improve_ids)]
+    # val_df = val_df[val_df.improve_sample_id.isin(use_improve_ids)]
+    # test_df = test_df[test_df.improve_sample_id.isin(use_improve_ids)]
+    # commenting this part. this is needed for the comparison of proteomics vs gene expression
+    # but not needed otherwise?
 
     # smiles_df = load_smiles_data(data_path)
 
