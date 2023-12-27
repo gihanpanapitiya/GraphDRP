@@ -195,7 +195,9 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     # training the model
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
     print(device)
-    model = modeling(dropout=args.dropout, fc1_dim=args.fc1_dim, fc2_dim=args.fc2_dim).to(device)
+
+    # print('args: ', args)
+    model = modeling(dropout=args['dropout'], fc1_dim=args['fc1_dim'], fc2_dim=args['fc2_dim']).to(device)
 
     # load_pt_weights=False
     if os.path.exists( args['load_pt_weights'] ):
@@ -313,6 +315,8 @@ def run(opt):
     cuda_name = opt['cuda_name']
     output_path = opt['output_dir']
     metric = opt['metric']
+
+    print("DO", opt)
     
 
     data_path=os.path.join(CANDLE_DATA_DIR, opt['model_name'], 'Data')
@@ -374,7 +378,7 @@ def initialize_parameters():
 if __name__ == '__main__':
 
     opt = initialize_parameters()
-    print(opt)
+    # print(opt)
     run(opt)
 
 
