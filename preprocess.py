@@ -18,9 +18,14 @@ import sys
 import matplotlib.pyplot as plt
 import argparse
 from sklearn.model_selection import train_test_split
-import improve_utils
+# import improve_utils
 import urllib
+# from data_utils import load_cell_mutation_data, load_landmark_genes
+# from data_utils import load_drug_response_data, load_smiles_data, add_smiles
+from data_utils import DataProcessor, add_smiles, candle_data_dict, load_generic_expression_data
 
+
+CANDLE_DATA_DIR=os.getenv("CANDLE_DATA_DIR")
 
 def is_not_float(string_list):
     try:
@@ -608,17 +613,17 @@ def get_drug_response_data(df, metric):
     return data_smiles_df
 
 
-def load_drug_smile_candle(split=0, metric='ic50'):
+def load_drug_smile_candle(smiles_df):
 
-    data_type='CCLE'
-    # metric='ic50'
+    # data_type='CCLE'
+    # # metric='ic50'
 
-    rs_all = improve_utils.load_single_drug_response_data(source=data_type, split=split,
-                                                          split_type=["train", "test", 'val'],
-                                                          y_col_name=metric)
+    # rs_all = improve_utils.load_single_drug_response_data(source=data_type, split=split,
+    #                                                       split_type=["train", "test", 'val'],
+    #                                                       y_col_name=metric)
 
-    se = improve_utils.load_smiles_data()
-    smiles_df = pd.merge(rs_all, se, on='improve_chem_id', how='left')
+    # se = improve_utils.load_smiles_data()
+    # smiles_df = pd.merge(rs_all, se, on='improve_chem_id', how='left')
     smiles_df = smiles_df.drop_duplicates(subset=['smiles'])
 
 
@@ -634,14 +639,27 @@ def load_drug_smile_candle(split=0, metric='ic50'):
         g = smile_to_graph(smile)
         smile_graph[smile] = g
         
-    return drug_dict, drug_smile, smile_graph, drug_smile_dict, smiles_df
+    return drug_dict, drug_smile, smile_graph, drug_smile_dict
 
-def get_cell_dict_feature_candle(model_data, gene_list=None, data_path=None):
+def get_cell_dict_feature_candle(model_data, gene_list=None, data_path=None, proc=None, use_mutation=True, use_proteomics_data=False):
 
-    mutation_data = improve_utils.load_cell_mutation_data(gene_system_identifier="Entrez")
+    if use_mutation:
+        print('using mutation data')
+        mutation_data = proc.load_cell_mutation_data(data_dir=data_path, gene_system_identifier="Entrez")
     # expr_data = improve_utils.load_gene_expression_data(gene_system_identifier="Gene_Symbol")
-    mutation_data = mutation_data.reset_index()
-    gene_data = mutation_data.columns[1:]
+        mutation_data = mutation_data.reset_index()
+        gene_data = mutation_data.columns[1:]
+
+    else:
+        print('using expression data')
+        if not use_proteomics_data:
+            print('using gene expression data')
+            expr_data = proc.load_gene_expression_data(data_dir=data_path, gene_system_identifier="Gene_Symbol")
+        else:
+            print('using proteomics data')
+            expr_data = load_generic_expression_data('proteomics_restructure_with_knn_impute.tsv')
+        gene_data = expr_data.columns
+
 
     if gene_list:
         gene_list = list(set(gene_list))
@@ -651,13 +669,30 @@ def get_cell_dict_feature_candle(model_data, gene_list=None, data_path=None):
         lmgenes = pd.read_csv(data_path+'/landmark_genes', header=None).values.ravel().tolist()
         common_genes = list(set(lmgenes).intersection(gene_data))
 
+    common_genes =  sorted(common_genes)
 
-    mutation_data = mutation_data[mutation_data.improve_sample_id.isin(model_data.improve_sample_id)]
 
-    tmp = mutation_data.loc[:, ['improve_sample_id']+common_genes]
-    tmp.reset_index(drop=True, inplace=True)
-    tmp2 = tmp.iloc[:, 1:].gt(0).astype(int)
-    tmp2 = pd.concat([tmp[['improve_sample_id']], tmp2], axis=1)
+    if use_mutation:
+        mutation_data = mutation_data[mutation_data.improve_sample_id.isin(model_data.improve_sample_id)]
+
+        tmp = mutation_data.loc[:, ['improve_sample_id']+common_genes]
+        tmp.reset_index(drop=True, inplace=True)
+        tmp2 = tmp.iloc[:, 1:].gt(0).astype(int)
+        tmp2 = pd.concat([tmp[['improve_sample_id']], tmp2], axis=1)
+
+    else:
+        print('use expr')
+        expr_data.reset_index(inplace=True)
+        expr_data = expr_data[expr_data.improve_sample_id.isin(model_data.improve_sample_id)]
+        tmp = expr_data.loc[:, ['improve_sample_id']+common_genes]
+        tmp.reset_index(drop=True, inplace=True)
+        tmp2 = tmp
+
+    # mutation_data = mutation_data[mutation_data.improve_sample_id.isin(model_data.improve_sample_id)]
+    # tmp = mutation_data.loc[:, ['improve_sample_id']+common_genes]
+    # tmp.reset_index(drop=True, inplace=True)
+    # tmp2 = tmp.iloc[:, 1:].gt(0).astype(int)
+    # tmp2 = pd.concat([tmp[['improve_sample_id']], tmp2], axis=1)
 
 
     cell_dict = {v:i for i,v in enumerate(tmp2.improve_sample_id.values)}
@@ -683,26 +718,87 @@ def get_input_data_candle(df, cell_feature, cell_dict, metric):
         
     return xd, xc, y
 
-def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='ic50', data_split_seed=-1):
+def save_mix_drug_cell_matrix_candle(args):
     
-    rs_all = improve_utils.load_single_drug_response_data(source=data_type, split=0,
-                                                          split_type=["train", "test", 'val'],
-                                                          y_col_name=metric)
-    rs_train = improve_utils.load_single_drug_response_data(source=data_type,
-                                                            split=0, split_type=["train"],
-                                                            y_col_name=metric)
-    rs_test = improve_utils.load_single_drug_response_data(source=data_type,
-                                                           split=0,
-                                                           split_type=["test"],
-                                                           y_col_name=metric)
-    rs_val = improve_utils.load_single_drug_response_data(source=data_type,
-                                                          split=0,
-                                                          split_type=["val"],
-                                                          y_col_name=metric)
+    # rs_all = improve_utils.load_single_drug_response_data(source=data_type, split=0,
+    #                                                       split_type=["train", "test", 'val'],
+    #                                                       y_col_name=metric)
+    # rs_train = improve_utils.load_single_drug_response_data(source=data_type,
+    #                                                         split=0, split_type=["train"],
+    #                                                         y_col_name=metric)
+    # rs_test = improve_utils.load_single_drug_response_data(source=data_type,
+    #                                                        split=0,
+    #                                                        split_type=["test"],
+    #                                                        y_col_name=metric)
+    # rs_val = improve_utils.load_single_drug_response_data(source=data_type,
+    #                                                       split=0,
+    #                                                       split_type=["val"],
+    #                                                       y_col_name=metric)
 
-    train_df = get_drug_response_data(rs_train, metric)
-    val_df = get_drug_response_data(rs_val, metric)
-    test_df = get_drug_response_data(rs_test, metric)
+#     remove_smiles=['COCCn1c2c([n+](Cc3cnccn3)c1C)C(=O)c1ccccc1C2=O.[Br-]',
+# 'CCC1(O)C(=O)OCc2c1cc1n(c2=O)Cc2cc3c(CN(C)C)c(O)ccc3[nH+]c2-1.[Cl-]',
+# 'Cc1ccc(C(=O)C[n+]2c(N)sc3c2CCCC3)cc1.[Br-]',
+# 'NC1CCCCC1N.O=C([O-])C(=O)[O-].[Pt+4]',
+# 'CCC(=C(c1ccccc1)c1ccc(OCCN(C)C)cc1)c1ccccc1.O=C([O-])CC(O)(CC(=O)[O-])C(=O)[O-].[H+].[H+].[H+]'
+# ]
+
+# data_path=None, data_type='CCLE', metric='ic50', 
+#                             data_split_id=0, data_split_seed=-1
+    proc = DataProcessor(args["data_version"])
+
+    data_type = candle_data_dict[args['data_source']]
+    data_split_id = args['data_split_id']
+    data_path=os.path.join(CANDLE_DATA_DIR, args['model_name'], 'Data')
+    metric = args['metric']
+    data_split_seed=args['data_split_seed']
+
+    train_df = proc.load_drug_response_data(data_path=data_path, 
+                                        data_type=data_type, split_id=data_split_id, split_type='train', response_type=metric)
+
+    val_df = proc.load_drug_response_data(data_path=data_path, 
+                                        data_type=data_type, split_id=data_split_id, split_type='val', response_type=metric)
+
+    test_df = proc.load_drug_response_data(data_path=data_path, 
+                                        data_type=data_type, split_id=data_split_id, split_type='test', response_type=metric)
+
+    # train_df = load_drug_response_data(data_path=data_path, data_type=data_type, split_id=data_split_id, split_type='train', response_type=metric)              
+    # val_df = load_drug_response_data(data_path=data_path, data_type=data_type, split_id=data_split_id, split_type='val', response_type=metric)              
+    # test_df = load_drug_response_data(data_path=data_path, data_type=data_type, split_id=data_split_id, split_type='test', response_type=metric)              
+    
+    smiles_df = proc.load_smiles_data(data_dir=data_path)
+
+    train_df = add_smiles(smiles_df, train_df, metric)
+    val_df = add_smiles(smiles_df, val_df, metric)
+    test_df = add_smiles(smiles_df, test_df, metric)
+
+
+    # if args['use_proteomics_data']:
+    # USE THE CELL LINES IN PROTEOMICS EITHER WHEN GENE EXPRESSION OR PROTEOMICS ARE USED
+    gexp_ = load_generic_expression_data('proteomics_restructure_with_knn_impute.tsv')
+    use_improve_ids = gexp_.index.values
+
+    train_df = train_df[train_df.improve_sample_id.isin(use_improve_ids)]
+    val_df = val_df[val_df.improve_sample_id.isin(use_improve_ids)]
+    test_df = test_df[test_df.improve_sample_id.isin(use_improve_ids)]
+    
+
+    # smiles_df = load_smiles_data(data_path)
+
+    # train_df = add_smiles(smiles_df, train_df, metric)
+    # val_df = add_smiles(smiles_df, val_df, metric)
+    # test_df = add_smiles(smiles_df, test_df, metric)
+
+
+    # train_df = train_df[~train_df.smiles.isin(remove_smiles)]
+    # val_df = val_df[~val_df.smiles.isin(remove_smiles)]
+    # test_df = test_df[~test_df.smiles.isin(remove_smiles)]
+
+    train_df.reset_index(drop=True, inplace=True)
+    val_df.reset_index(drop=True, inplace=True)
+    test_df.reset_index(drop=True, inplace=True)
+    # train_df = get_drug_response_data(rs_train, metric)
+    # val_df = get_drug_response_data(rs_val, metric)
+    # test_df = get_drug_response_data(rs_test, metric)
 
 
     all_df = pd.concat([train_df, val_df, test_df], axis=0)
@@ -716,13 +812,15 @@ def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='i
         train_df.reset_index(drop=True, inplace=True)
         test_df.reset_index(drop=True, inplace=True)
         val_df.reset_index(drop=True, inplace=True)
-    test_df.to_csv(os.path.join(data_path, 'test_smiles2.csv'), index=False)
+    # test_df.to_csv(os.path.join(data_path, 'test_smiles2.csv'), index=False)
 
-    drug_dict, drug_smile, smile_graph, drug_smile_dict, smiles_df = load_drug_smile_candle(metric=metric)
+    drug_dict, drug_smile, smile_graph, drug_smile_dict = load_drug_smile_candle(all_df)
 
-    cell_dict, cell_feature = get_cell_dict_feature_candle(all_df, data_path=data_path)
+    genes = proc.load_landmark_genes(data_path)
+    cell_dict, cell_feature = get_cell_dict_feature_candle(all_df, data_path=data_path, gene_list=genes, proc=proc,
+                                use_mutation=args['use_mutation'], use_proteomics_data=args['use_proteomics_data'])
 
-    all_df=pd.merge(all_df, smiles_df[['improve_chem_id', 'smiles']], on='smiles', how='left')
+    # all_df=pd.merge(all_df, smiles_df[['improve_chem_id', 'smiles']], on='smiles', how='left')
 
     xd_train, xc_train, y_train = get_input_data_candle(train_df, cell_feature, cell_dict, metric)
     xd_val, xc_val, y_val = get_input_data_candle(val_df, cell_feature, cell_dict, metric)
@@ -737,7 +835,7 @@ def save_mix_drug_cell_matrix_candle(data_path=None, data_type='CCLE', metric='i
     test_data = TestbedDataset(root=data_path+'/data', dataset=data_type+'_test_mix', xd=xd_test, xt=xc_test,
                                y=y_test, smile_graph=smile_graph)
     
-    return train_data, val_data, test_data
+    return train_data, val_data, test_data, test_df
 
 
 

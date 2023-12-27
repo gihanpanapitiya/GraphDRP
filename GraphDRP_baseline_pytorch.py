@@ -16,9 +16,22 @@ from preprocess import save_mix_drug_cell_matrix_candle
 import candle
 import improve_utils
 import urllib
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 from preprocess import download_csa_data
+from data_utils import candle_data_dict
 
+def seed_everything(seed: int):
+    import random, os
+    
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+    
+seed_everything(26)
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 additional_definitions = [
@@ -62,7 +75,15 @@ additional_definitions = [
      'type': int,
      'help': '.....'
      },
+    {'name': 'data_split_id',
+     'type': int,
+     'help': '.....'
+     },
      {'name': 'data_type',
+     'type': str,
+     'help': '.....'
+     },
+    {'name': 'data_source',
      'type': str,
      'help': '.....'
      },
@@ -70,6 +91,9 @@ additional_definitions = [
      'type': bool
      },
     {'name': 'metric',
+     'type': str
+     },
+    {'name': 'load_pt_weights',
      'type': str
      }
 ]
@@ -125,7 +149,8 @@ def predicting(model, device, loader):
 
 
 def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval, 
-           cuda_name, data_path, output_path, dataset_type, train_data, val_data, test_data):
+           cuda_name, data_path, output_path, dataset_type, train_data, val_data, test_data, test_df,
+        args):
 
     
     print('Learning rate: ', lr)
@@ -162,6 +187,40 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
     print(device)
     model = modeling().to(device)
+
+    # load_pt_weights=False
+    if os.path.exists( args['load_pt_weights'] ):
+        print('=================================')
+        print('loading pretrained weights')
+        print('=================================')
+        print(args['load_pt_weights'])
+        if '2' in args['load_pt_weights']:
+            from pretrain_models import GINConvNetPretrain2 as GINConvNetPretrain
+            model_pretrained = GINConvNetPretrain(n_out_regr=3, n_out_clsf=[11, 8])
+        elif '3' in args['load_pt_weights']:
+            from pretrain_models import GINConvNetPretrain3 as GINConvNetPretrain
+            model_pretrained = GINConvNetPretrain(n_out_regr=5)
+        
+        model_pretrained.load_state_dict(torch.load( args['load_pt_weights'] ))
+        
+        state_dict_to_load={}
+        for k,v in model.state_dict().items():
+        
+            if k in model_pretrained.state_dict().keys():
+                # print(k)
+                if v.size() == model_pretrained.state_dict()[k].size():
+                    state_dict_to_load[k] = model_pretrained.state_dict()[k]
+            else:
+                state_dict_to_load[k] = v
+        model.load_state_dict(state_dict_to_load, strict=False)
+
+        print('=================================')
+        print('pretrained weights loaded.')
+        print('=================================')
+    else:
+        print('no pretrained weights found')
+
+    
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     best_mse = 1000
     best_pearson = 1
@@ -200,13 +259,14 @@ def main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interv
     true_test, pred_test = predicting(model, device, test_loader)
     # print(true_test, end='')
     # print(true_test, end='')
-    print("rmse: ", mean_squared_error(true_test, pred_test)**.5)
+    print("rmse: ", mean_squared_error(true_test, pred_test)**.5, r2_score(y_true=true_test, y_pred=pred_test))
 
-    test_data = pd.read_csv(os.path.join(data_path, 'test_smiles2.csv'))
-    test_smiles = test_data['smiles'].values
-    df_res = pd.DataFrame(np.column_stack([true_test,pred_test, test_smiles]), columns=['true', 'pred', 'smiles'])
-    test_data.columns=['cell_line_id',	'drug_id','labels']
-    df_res = pd.concat([df_res, test_data], axis=1)
+    # test_data = pd.read_csv(os.path.join(data_path, 'test_smiles2.csv'))
+    test_smiles = test_df['smiles'].values
+    # print(test_df.head())
+    df_res = pd.DataFrame(np.column_stack([true_test,pred_test]), columns=['true', 'pred'])
+    # test_data.columns=['cell_line_id',	'drug_id','labels']
+    df_res = pd.concat([df_res, test_df], axis=1)
     df_res.to_csv(output_path+'/test_predictions.csv', index=False)
 
 def get_data(data_url, cache_subdir, download=True):
@@ -252,23 +312,27 @@ def run(opt):
         download_data = opt['download_data']
         get_data(data_url, data_path, download_data)
         save_mix_drug_cell_matrix(data_path, opt['data_split_seed'])
-    elif opt['data_type'] == 'ccle_candle':
-        print('running with candle data....')
-        dataset_type='CCLE'
-        if opt['download_data']:
-            if not os.path.exists(data_path+'/csa_data'):
-                print('downloading ccle data')
-                download_csa_data(opt)
-        else:
-            print('not downloading ccle data')
-    train_data, val_data, test_data = save_mix_drug_cell_matrix_candle(data_path=data_path, data_type='CCLE', \
-    metric=metric, data_split_seed=opt['data_split_seed'])
+    elif 'candle' in opt['data_source']:
 
+        print('running with candle data....')
+        data_type = candle_data_dict[opt['data_source']]
+
+        # if opt['download_data']:
+        #     if not os.path.exists(data_path+'/csa_data'):
+        #         print('downloading ccle data')
+        #         download_csa_data(opt)
+        # else:
+        #     print('not downloading ccle data')
+
+    # train_data, val_data, test_data, test_df = save_mix_drug_cell_matrix_candle(data_path=data_path, data_type=data_type, \
+    # metric=metric, data_split_seed=opt['data_split_seed'])
+
+    train_data, val_data, test_data, test_df = save_mix_drug_cell_matrix_candle(opt)
 
 
 
     main(modeling, train_batch, val_batch, test_batch, lr, num_epoch, log_interval,
-     cuda_name, data_path, output_path, dataset_type, train_data, val_data, test_data)
+     cuda_name, data_path, output_path, data_type, train_data, val_data, test_data, test_df, opt)
 
 
 
